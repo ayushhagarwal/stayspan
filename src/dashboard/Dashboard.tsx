@@ -84,10 +84,15 @@ export function Dashboard() {
             <Settings size={19} /> Settings
           </button>
         </nav>
-        <div className="sidebar-link">
-          <FolderGit2 size={18} /> Open source · v0.1
-        </div>
-        <p className="privacy-note">Your booking data stays in this browser.</p>
+        <a
+          className="sidebar-link"
+          href="https://github.com/ayushhagarwal/stayspan"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <FolderGit2 size={18} /> View on GitHub
+        </a>
+        <p className="privacy-note">Local-first. Your stays never leave this browser.</p>
       </aside>
 
       <main className="main-content">
