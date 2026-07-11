@@ -1,0 +1,23 @@
+:root { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #101a35; background: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0; width: 380px; min-height: 500px; }
+button { font: inherit; cursor: pointer; }
+.popup-shell { min-height: 500px; display: flex; flex-direction: column; }
+.popup-shell header { height: 72px; border-bottom: 1px solid #e3e7ee; padding: 0 21px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; letter-spacing: -.6px; }
+.brand-mark { width: 25px; color: #165dff; }
+.local-dot { color: #62708a; font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.local-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #28a56a; }
+.popup-body { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 45px 32px 24px; }
+.scan-icon, .success-icon { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; color: #165dff; background: #eef4ff; }
+.success-icon { color: #168354; background: #eaf8f1; }
+.popup-body h1 { font-size: 25px; letter-spacing: -1px; margin: 21px 0 8px; }
+.popup-body p { color: #65708a; font-size: 13px; line-height: 1.55; margin: 0 0 22px; }
+.popup-body .property-preview { color: #101a35; font-weight: 650; font-size: 15px; margin-bottom: 8px; }
+.popup-primary, .popup-secondary { width: 100%; min-height: 45px; border-radius: 7px; font-weight: 650; font-size: 13px; }
+.popup-primary { color: #fff; background: #165dff; border: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.popup-primary:hover { background: #064fe7; }
+.popup-primary:disabled { opacity: .7; }
+.popup-secondary { color: #35415b; background: #fff; border: 1px solid #d4dae5; margin-top: 10px; }
+.open-dashboard { height: 55px; border: 0; border-top: 1px solid #e3e7ee; background: #fff; color: #42506b; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 650; }
+.open-dashboard:hover { color: #165dff; }

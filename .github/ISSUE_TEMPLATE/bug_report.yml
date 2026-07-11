@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible problem using fictional or redacted information.
+title: "[Bug]: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve StaySpan. Never include booking links, confirmation numbers, account tokens, or personal travel information.
+  - type: checkboxes
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have removed all personal and booking-identifying information.
+          required: true
+        - label: This is not a security vulnerability or privacy leak.
+          required: true
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open a fictional or sanitized booking fixture/page
+        2. Click StaySpan
+        3. Select Scan this page
+        4. Observe...
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 140
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: StaySpan commit
+      description: Commit SHA or branch name.
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Sanitized screenshots, console errors, or fixture markup only.

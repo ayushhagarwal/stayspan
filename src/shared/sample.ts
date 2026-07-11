@@ -1,0 +1,43 @@
+import type { Stay } from './types'
+
+export const sampleStays: Stay[] = [
+  {
+    id: 'sample-tokyo',
+    propertyName: 'Shinjuku Granbell Hotel',
+    checkIn: '2026-10-08T15:00',
+    checkOut: '2026-10-11T11:00',
+    cancellationDeadline: '2026-10-05T23:59',
+    cancellationPolicy: 'Free cancellation until 5 October at 23:59. After that, the first night is charged.',
+    address: '2-14-5 Kabukicho, Shinjuku-ku, Tokyo, Japan',
+    phone: '+81 3-5155-2666',
+    sourceName: 'Booking.com',
+    sourceUrl: 'https://www.booking.com',
+    createdAt: '2026-07-11T10:00:00.000Z',
+  },
+  {
+    id: 'sample-kyoto',
+    propertyName: 'The Blossom Kyoto',
+    checkIn: '2026-10-11T15:00',
+    checkOut: '2026-10-14T11:00',
+    cancellationDeadline: '2026-10-08T23:59',
+    cancellationPolicy: 'Free cancellation until 8 October at 23:59.',
+    address: '140-2 Manjujicho, Shimogyo-ku, Kyoto, Japan',
+    phone: '+81 75-354-8739',
+    sourceName: 'Agoda',
+    sourceUrl: 'https://www.agoda.com',
+    createdAt: '2026-07-11T10:01:00.000Z',
+  },
+  {
+    id: 'sample-osaka',
+    propertyName: 'Cross Hotel Osaka',
+    checkIn: '2026-10-14T15:00',
+    checkOut: '2026-10-17T11:00',
+    cancellationDeadline: '2026-10-12T23:59',
+    cancellationPolicy: 'Free cancellation until 12 October at 23:59.',
+    address: '2-5-15 Shinsaibashi-suji, Chuo-ku, Osaka, Japan',
+    phone: '+81 6-6213-8281',
+    sourceName: 'Hotels.com',
+    sourceUrl: 'https://www.hotels.com',
+    createdAt: '2026-07-11T10:02:00.000Z',
+  },
+]
