@@ -6,6 +6,7 @@ const HIGH_CONFIDENCE = 0.8
 const MIN_CONFIDENCE = 0.55
 const ESSENTIAL_FIELDS: Array<keyof StayDraft> = ['propertyName', 'checkIn', 'checkOut', 'cancellationDeadline', 'address', 'phone']
 const GENERIC_HEADINGS = /^(booking|booking details|manage booking|your booking|confirmed|confirmation|hotels?|accommodation|reservation|trip|my bookings?)$/i
+const GENERIC_CONFIRMATION_HEADING = /\b(?:booking|reservation)\b.*\b(?:confirmed|confirmation|details)\b|\b(?:confirmed|confirmation)\b.*\b(?:booking|reservation)\b/i
 const DATE_BOUNDARY = /\b(check[- ]?in|arrival|check[- ]?out|departure|cancell?ation|address|phone|contact|booking (?:id|number)|reservation)\b/i
 const LABELS = {
   checkIn: ['check-in', 'check in', 'arrival', 'arrival date'],
@@ -61,11 +62,19 @@ function segmentAfterLabel(context: string, labels: string[]) {
   return normalize((boundary > 0 ? remainder.slice(0, boundary) : remainder).slice(0, 240))
 }
 
-function parseDateValue(text: string, fallbackHour: number): { value: string; hasTime: boolean } | undefined {
-  const parsed = chrono.parse(text, new Date(), { forwardDate: true })[0]
+export function parseDateValue(text: string, fallbackHour: number): { value: string; hasTime: boolean } | undefined {
+  const separatedText = text.replace(/(\d{4})(?=(?:[01]?\d|2[0-3]):[0-5]\d)/g, '$1 ')
+  const timeRange = separatedText.match(/\b((?:[01]?\d|2[0-3]):[0-5]\d)\s*[-–]\s*(?:[01]?\d|2[0-3]):[0-5]\d\b/)
+  const parseableText = timeRange ? separatedText.replace(timeRange[0], timeRange[1]) : separatedText
+  const parsed = chrono.parse(parseableText, new Date(), { forwardDate: true })[0]
   if (!parsed) return undefined
   const date = parsed.start.date()
-  const hasTime = parsed.start.isCertain('hour')
+  let hasTime = parsed.start.isCertain('hour')
+  const explicitTime = parseableText.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/)
+  if (!hasTime && explicitTime && !/\b[ap]\.?m\.?\b/i.test(parseableText)) {
+    date.setHours(Number(explicitTime[1]), Number(explicitTime[2]), 0, 0)
+    hasTime = true
+  }
   if (!hasTime) date.setHours(fallbackHour, 0, 0, 0)
   const pad = (value: number) => String(value).padStart(2, '0')
   return {
@@ -97,7 +106,7 @@ function extractPropertyName(snapshot: PageSnapshot, lodging: Record<string, unk
   }
   for (const element of snapshot.elements) {
     const value = normalize(element.text)
-    if (!element.headingLevel || value.length < 3 || value.length > 120 || GENERIC_HEADINGS.test(value)) continue
+    if (!element.headingLevel || value.length < 3 || value.length > 120 || GENERIC_HEADINGS.test(value) || GENERIC_CONFIRMATION_HEADING.test(value)) continue
     const context = element.context.toLowerCase()
     const bookingContext = /check[- ]?in|check[- ]?out|address|room|guest|stay/.test(context)
     const levelBoost = element.headingLevel === 1 ? 0.05 : 0
@@ -194,7 +203,13 @@ function extractCancellationPolicy(snapshot: PageSnapshot): Candidate | undefine
     if (!ownHasPolicy && start === undefined) continue
     const text = ownHasPolicy ? ownText : context.slice(start, start + 500)
     if (text.length < 15 || text.length > 900) continue
-    candidates.push({ value: text.slice(0, 200), confidence: /free cancellation|cancel for free/i.test(text) ? 0.88 : 0.76, evidence: { source: 'semantic-label', reason: 'Cancellation language in booking details' } })
+    const hasFreeCancellation = /free cancellation|cancel for free/i.test(text)
+    const hasDeadlineLanguage = /\buntil\b|\bbefore\b|\bby\b/i.test(text)
+    const hasDate = chrono.parse(text, new Date(), { forwardDate: true }).length > 0
+    const interactivePenalty = ['a', 'button'].includes(element.tag) ? 0.12 : 0
+    const shortPenalty = text.length < 40 ? 0.12 : 0
+    const confidence = 0.68 + (hasFreeCancellation ? 0.08 : 0) + (hasDeadlineLanguage ? 0.08 : 0) + (hasDate ? 0.1 : 0) - interactivePenalty - shortPenalty
+    candidates.push({ value: text.slice(0, 200), confidence, evidence: { source: 'semantic-label', reason: hasDate ? 'Detailed cancellation policy with a date' : 'Cancellation language in booking details' } })
   }
   return best(candidates)
 }
