@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "StaySpan — Hotel Booking Organizer",
+  "short_name": "StaySpan",
+  "version": "0.1.0",
+  "description": "Keep hotel dates, cancellation deadlines, addresses and contacts in one private trip timeline.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_title": "StaySpan",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "options_page": "dashboard.html"
+}

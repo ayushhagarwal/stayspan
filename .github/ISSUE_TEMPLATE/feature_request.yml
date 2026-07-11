@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a focused improvement to StaySpan.
+title: "[Feature]: "
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed outcome
+      description: Describe the desired behavior, not only an implementation.
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Area
+      options:
+        - Extraction
+        - Trip dashboard
+        - Review and editing
+        - Privacy and permissions
+        - Accessibility
+        - Developer experience
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Privacy or permission impact
+      description: Explain any new data handling, browser access, or dependency.
+      placeholder: None
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Scope confirmation
+      options:
+        - label: This proposal does not require provider-specific production selectors.
+          required: true
+        - label: I have not included real booking or personal data.
+          required: true
