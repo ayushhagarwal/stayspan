@@ -86,7 +86,7 @@ export function collectPageSnapshot(): PageSnapshot {
   })
 
   return {
-    url: location.href,
+    url: `${location.origin}${location.pathname}`,
     hostname: location.hostname.replace(/^www\./, ''),
     title: document.title,
     description: document.querySelector('meta[name="description"]')?.getAttribute('content') || '',

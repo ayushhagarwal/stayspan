@@ -14,3 +14,10 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ve
 - Automatic trip grouping and cancellation deadline highlighting.
 - JSON export and incomplete-stay support.
 - Sanitized extraction and UI test suite.
+
+### Fixed
+
+- Prefer detailed dated cancellation policies over short promotional badges.
+- Recover the start of explicit 24-hour time ranges and separately rendered checkout times.
+- Ignore generic booking-confirmation headings when scoring property names.
+- Strip sensitive query parameters and fragments from stored booking-source URLs.

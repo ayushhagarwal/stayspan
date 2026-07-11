@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { collectPageSnapshot } from './collector'
-import { extractStay } from './engine'
+import { extractStay, parseDateValue } from './engine'
 
 function render(html: string, title = 'Booking details') {
   document.head.innerHTML = `<title>${title}</title>`
@@ -98,5 +98,38 @@ describe('generic semantic extraction', () => {
     render('<main><h1>Welcome</h1><p>Explore places around the world.</p></main>', 'Travel home')
     const result = extractStay(collectPageSnapshot())
     expect(result.status).toBe('none')
+  })
+
+  it('prefers a detailed policy over short badges and recovers explicit 24-hour times', () => {
+    expect(parseDateValue('12 March 2027 15:00 - 23:00', 15)?.value).toBe('2027-03-12T15:00')
+    render(`
+      <header><h1>Your booking is confirmed</h1></header>
+      <main><article>
+        <h1>Seaside Inn</h1>
+        <section>
+          <h3>Check-in</h3><div>12 March 2027</div><div>15:00 - 23:00</div>
+          <h3>Check-out</h3><div>15 March 2027</div><div>from 12:00</div>
+        </section>
+        <table><tr><th>Cancellation policy</th><td>Cancel for free until 18:00 on 10 March 2027. After this time, the first night is charged.</td></tr></table>
+        <div>Free cancellation</div>
+        <p>12 Ocean Road, Harbour District, Brighton, United Kingdom</p>
+        <a href="tel:+44 20 7946 0958">Contact the property at +44 20 7946 0958</a>
+      </article></main>
+      <aside><a href="/another-stay">Another property with free cancellation until 20 March 2027</a></aside>
+    `)
+    const result = extractStay(collectPageSnapshot())
+    expect(result.draft.propertyName).toBe('Seaside Inn')
+    expect(result.draft.checkIn).toBe('2027-03-12T15:00')
+    expect(result.draft.checkOut).toBe('2027-03-15T12:00')
+    expect(result.draft.cancellationDeadline).toBe('2027-03-10T18:00')
+    expect(result.draft.cancellationPolicy).toContain('first night is charged')
+  })
+
+  it('strips sensitive query parameters and fragments from the source URL', () => {
+    window.history.replaceState({}, '', '/confirmation?auth_key=secret#details')
+    render('<main><h1>Seaside Inn</h1><p>Check-in: 12 March 2027</p></main>')
+    const snapshot = collectPageSnapshot()
+    expect(snapshot.url).toBe(`${window.location.origin}/confirmation`)
+    expect(snapshot.url).not.toContain('secret')
   })
 })
