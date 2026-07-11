@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BriefcaseBusiness, FolderGit2, Plus, Settings } from 'lucide-react'
 import { Logo } from '../shared/Logo'
-import { getStays, saveStays, takeDraft } from '../shared/storage'
-import { groupIntoTrips } from '../shared/trips'
-import type { Stay, StayDraft } from '../shared/types'
+import { getData, saveData, serializeDataExport, takeDraft } from '../shared/storage'
+import { groupIntoTrips, updateTripGroups } from '../shared/trips'
+import type { Stay, StayDraft, Trip, TripGroup } from '../shared/types'
 import type { ExtractionFieldMap } from '../extraction/types'
 import { StayEditor } from './StayEditor'
 import { TripSection } from './TripSection'
+import { GroupStaysDialog } from './GroupStaysDialog'
 
 const EMPTY_DRAFT: StayDraft = {
   propertyName: '',
@@ -22,15 +23,18 @@ const EMPTY_DRAFT: StayDraft = {
 
 export function Dashboard() {
   const [stays, setStays] = useState<Stay[]>([])
+  const [tripGroups, setTripGroups] = useState<TripGroup[]>([])
   const [loaded, setLoaded] = useState(false)
   const [editing, setEditing] = useState<Stay | null>(null)
   const [draft, setDraft] = useState<StayDraft | null>(null)
   const [reviewFields, setReviewFields] = useState<ExtractionFieldMap | undefined>()
   const [view, setView] = useState<'trips' | 'settings'>('trips')
+  const [groupingTrip, setGroupingTrip] = useState<Trip | null>(null)
 
   useEffect(() => {
-    Promise.all([getStays(), takeDraft()]).then(([saved, captured]) => {
-      setStays(saved)
+    Promise.all([getData(), takeDraft()]).then(([saved, captured]) => {
+      setStays(saved.stays)
+      setTripGroups(saved.tripGroups)
       if (captured) {
         setDraft(captured.draft)
         setReviewFields(captured.fields)
@@ -39,11 +43,12 @@ export function Dashboard() {
     })
   }, [])
 
-  const trips = useMemo(() => groupIntoTrips(stays), [stays])
+  const trips = useMemo(() => groupIntoTrips(stays, tripGroups), [stays, tripGroups])
 
-  const commit = async (next: Stay[]) => {
-    setStays(next)
-    await saveStays(next)
+  const commit = async (nextStays: Stay[], nextGroups = tripGroups) => {
+    setStays(nextStays)
+    setTripGroups(nextGroups)
+    await saveData(nextStays, nextGroups)
   }
 
   const handleSave = async (values: StayDraft) => {
@@ -57,7 +62,18 @@ export function Dashboard() {
   }
 
   const handleDelete = async (id: string) => {
-    await commit(stays.filter((stay) => stay.id !== id))
+    const nextGroups = tripGroups
+      .map((group) => ({ ...group, stayIds: group.stayIds.filter((stayId) => stayId !== id) }))
+      .filter((group) => group.stayIds.length >= 2)
+    await commit(stays.filter((stay) => stay.id !== id), nextGroups)
+  }
+
+  const handleGroup = async (stayIds: string[]) => {
+    if (!groupingTrip) return
+    const groupId = groupingTrip.manualGroupId ?? crypto.randomUUID()
+    const nextGroups = updateTripGroups(tripGroups, groupId, stayIds)
+    await commit(stays, nextGroups)
+    setGroupingTrip(null)
   }
 
   const openEditor = (stay?: Stay) => {
@@ -125,12 +141,13 @@ export function Dashboard() {
                   heading={index === 0 ? 'Upcoming trip' : 'Later trip'}
                   onEdit={openEditor}
                   onDelete={handleDelete}
+                  onGroup={setGroupingTrip}
                 />
               ))}
             </div>
           </>
         ) : (
-          <SettingsView stays={stays} onClear={() => commit([])} />
+          <SettingsView stays={stays} tripGroups={tripGroups} onClear={() => commit([], [])} />
         )}
       </main>
 
@@ -143,13 +160,23 @@ export function Dashboard() {
           onSave={handleSave}
         />
       ) : null}
+      {groupingTrip ? (
+        <GroupStaysDialog
+          key={groupingTrip.id}
+          stays={stays}
+          initialStayIds={groupingTrip.stays.map((stay) => stay.id)}
+          manualGroup={Boolean(groupingTrip.manualGroupId)}
+          onClose={() => setGroupingTrip(null)}
+          onSave={handleGroup}
+        />
+      ) : null}
     </div>
   )
 }
 
-function SettingsView({ stays, onClear }: { stays: Stay[]; onClear: () => void }) {
+function SettingsView({ stays, tripGroups, onClear }: { stays: Stay[]; tripGroups: TripGroup[]; onClear: () => void }) {
   const exportData = () => {
-    const blob = new Blob([JSON.stringify({ version: 1, stays }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([serializeDataExport(stays, tripGroups)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

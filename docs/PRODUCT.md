@@ -18,7 +18,7 @@ Independent travelers who make hotel or accommodation bookings across multiple p
 2. The user clicks StaySpan and starts a scan.
 3. StaySpan extracts semantic candidates locally.
 4. The user reviews, corrects, or leaves fields incomplete.
-5. The stay is saved locally and grouped into a trip timeline.
+5. The stay is saved locally and grouped into a trip timeline automatically, with a manual grouping override when needed.
 
 ## Success criteria
 
@@ -26,6 +26,7 @@ Independent travelers who make hotel or accommodation bookings across multiple p
 - Uncertain values are never silently represented as certain.
 - Booking IDs are not treated as contact numbers.
 - Consecutive dated stays group into coherent trips.
+- Users can manually group stays when dates are incomplete or automatic grouping is not appropriate.
 - No booking data is transmitted by StaySpan.
 - The project remains understandable and extensible without provider-specific adapters.
 

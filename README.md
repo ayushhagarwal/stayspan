@@ -40,7 +40,7 @@ Hotel bookings often live across multiple providers. The information needed duri
 - Scan the active booking page using a deterministic semantic extraction engine.
 - Understand structured data, headings, labels, layout proximity, dates, contact links, and cancellation language.
 - Score every extracted field and flag lower-confidence values.
-- Organize consecutive stays into a single trip timeline.
+- Organize consecutive stays automatically and manually group exceptions into one trip timeline.
 - Highlight cancellation deadlines and check-in/check-out times.
 - Add, edit, or save incomplete stays manually.
 - Export local data as JSON.

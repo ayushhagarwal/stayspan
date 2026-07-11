@@ -1,4 +1,4 @@
-import { CalendarDays, ExternalLink, MapPin, Pencil, Phone, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarDays, ExternalLink, MapPin, Pencil, Phone, Trash2, TriangleAlert, UsersRound } from 'lucide-react'
 import { formatLongDate, formatShortDate, formatTime, nightsBetween, sourceLabel } from '../shared/format'
 import { destinationFromAddress, tripTitle } from '../shared/trips'
 import type { Stay, Trip } from '../shared/types'
@@ -8,21 +8,27 @@ type Props = {
   heading: string
   onEdit: (stay: Stay) => void
   onDelete: (id: string) => void
+  onGroup: (trip: Trip) => void
 }
 
-export function TripSection({ trip, heading, onEdit, onDelete }: Props) {
+export function TripSection({ trip, heading, onEdit, onDelete, onGroup }: Props) {
   const nights = nightsBetween(trip.start, trip.end)
   const tripDates = nights ? `${formatShortDate(trip.start)} – ${formatShortDate(trip.end)} · ${nights} nights` : 'Dates not added yet'
   return (
     <section className="trip-section">
       <h2 className="section-label">{heading}</h2>
       <div className="trip-panel">
-        <div className="trip-summary">
-          <CalendarDays size={24} />
-          <div>
-            <h2>{tripTitle(trip)}</h2>
-            <p>{tripDates}</p>
+        <div className="trip-panel-header">
+          <div className="trip-summary">
+            <CalendarDays size={24} />
+            <div>
+              <h2>{tripTitle(trip)}</h2>
+              <p>{tripDates}</p>
+            </div>
           </div>
+          <button className="group-button" onClick={() => onGroup(trip)} aria-label={`Group stays in ${tripTitle(trip)}`}>
+            <UsersRound size={16} /> Group stays
+          </button>
         </div>
 
         <div className="route" aria-label="Trip route">

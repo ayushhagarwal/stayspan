@@ -1,11 +1,12 @@
 import { sampleStays } from './sample'
-import type { Stay, StayDraft } from './types'
+import type { Stay, StayDraft, TripGroup } from './types'
 import type { DraftEnvelope, ExtractionFieldMap } from '../extraction/types'
 
 const DATA_KEY = 'stayspan_data_v1'
 const DRAFT_KEY = 'stayspan_draft_v1'
 
-type StoredData = { version: 1; stays: Stay[]; hasSeenDemo: boolean }
+type StoredDataV1 = { version: 1; stays: Stay[]; hasSeenDemo: boolean }
+export type StoredData = { version: 2; stays: Stay[]; tripGroups: TripGroup[]; hasSeenDemo: boolean }
 
 const hasChromeStorage = () => typeof chrome !== 'undefined' && Boolean(chrome.storage?.local)
 
@@ -26,17 +27,26 @@ async function writeRaw<T>(key: string, value: T): Promise<void> {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-export async function getStays(): Promise<Stay[]> {
-  const stored = await readRaw<StoredData>(DATA_KEY)
-  if (stored?.version === 1) return stored.stays
+export async function getData(): Promise<StoredData> {
+  const stored = await readRaw<StoredData | StoredDataV1>(DATA_KEY)
+  if (stored?.version === 2) return stored
+  if (stored?.version === 1) {
+    const migrated: StoredData = { version: 2, stays: stored.stays, tripGroups: [], hasSeenDemo: stored.hasSeenDemo }
+    await writeRaw(DATA_KEY, migrated)
+    return migrated
+  }
 
-  const initial: StoredData = { version: 1, stays: sampleStays, hasSeenDemo: false }
+  const initial: StoredData = { version: 2, stays: sampleStays, tripGroups: [], hasSeenDemo: false }
   await writeRaw(DATA_KEY, initial)
-  return initial.stays
+  return initial
 }
 
-export async function saveStays(stays: Stay[]): Promise<void> {
-  await writeRaw<StoredData>(DATA_KEY, { version: 1, stays, hasSeenDemo: true })
+export async function saveData(stays: Stay[], tripGroups: TripGroup[]): Promise<void> {
+  await writeRaw<StoredData>(DATA_KEY, { version: 2, stays, tripGroups, hasSeenDemo: true })
+}
+
+export function serializeDataExport(stays: Stay[], tripGroups: TripGroup[]): string {
+  return JSON.stringify({ version: 2, stays, tripGroups }, null, 2)
 }
 
 export async function saveDraft(draft: StayDraft, fields?: ExtractionFieldMap): Promise<void> {

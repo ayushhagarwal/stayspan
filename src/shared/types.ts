@@ -14,9 +14,15 @@ export type Stay = {
 
 export type StayDraft = Omit<Stay, 'id' | 'createdAt'>
 
+export type TripGroup = {
+  id: string
+  stayIds: string[]
+}
+
 export type Trip = {
   id: string
   stays: Stay[]
   start: string
   end: string
+  manualGroupId?: string
 }

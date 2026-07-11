@@ -36,6 +36,38 @@ describe('generic semantic extraction', () => {
     expect(result.draft.address).toContain('12 Bay Road')
   })
 
+  it('finds a linked property name beside booking details without relying on a heading', () => {
+    render(`
+      <header><a href="/hotels">Hotels & Homes</a><h1>Your booking is confirmed</h1></header>
+      <main><article>
+        <a href="/trust-and-safety">Learn more about staying safe online</a>
+        <a href="/hotel/jp/harbour-house">Harbour House Riverside</a>
+        <section><h2>Check-in</h2><p>20 January 2027 at 3:00 PM</p></section>
+        <section><h2>Check-out</h2><p>23 January 2027 at 11:00 AM</p></section>
+        <p>Address</p><p>12 Bay Road, Sydney, Australia</p>
+      </article></main>
+    `)
+    const result = extractStay(collectPageSnapshot())
+    expect(result.draft.propertyName).toBe('Harbour House Riverside')
+    expect(result.fields.propertyName?.confidence).toBeGreaterThanOrEqual(0.8)
+  })
+
+  it('prefers a linked stay name over booking section headings', () => {
+    render(`
+      <header><h1>Your booking is confirmed</h1></header>
+      <main>
+        <a href="/property/city/lantern-hostel"><h2>Lantern Hostel Central</h2></a>
+        <section><h2>Room information</h2><h3>Benefits</h3></section>
+        <div><span>Check-in</span><span>9 October 2027</span><span>4:00 PM</span></div>
+        <div><span>Check-out</span><span>13 October 2027</span><span>11:00 AM</span></div>
+        <div><span>Address</span><span>5 Lantern Street, Central District, Tokyo, Japan</span></div>
+      </main>
+    `)
+    const result = extractStay(collectPageSnapshot())
+    expect(result.draft.propertyName).toBe('Lantern Hostel Central')
+    expect(result.draft.propertyName).not.toBe('Room information')
+  })
+
   it('extracts split check-in and check-out date-time values', () => {
     render(`
       <main><article><h2>Mountain Lodge</h2>
@@ -58,6 +90,19 @@ describe('generic semantic extraction', () => {
     const result = extractStay(collectPageSnapshot())
     expect(result.draft.cancellationPolicy.toLowerCase()).toContain('free cancellation')
     expect(result.draft.cancellationDeadline).toBe('2027-10-05T18:00')
+  })
+
+  it('extracts an explicit deadline from a separate refund schedule', () => {
+    render(`
+      <main><article><h2>Lantern House</h2>
+        <p>Check-in: 15 October 2026 at 3:00 PM</p><p>Check-out: 17 October 2026 at 11:00 AM</p>
+        <table><tr><th>Cancellation policy</th><td>You may cancel free of charge until 2 days before arrival. If you cancel later, the fee is 50% of the total price.</td></tr></table>
+        <section><h3>Refund schedule</h3><p>You'll get a full refund if you cancel before 23:59 on 12 October 2026. If you cancel from 13 October 2026, you'll receive a partial refund.</p></section>
+      </article></main>
+    `)
+    const result = extractStay(collectPageSnapshot())
+    expect(result.draft.cancellationDeadline).toBe('2026-10-12T23:59')
+    expect(result.fields.cancellationDeadline?.confidence).toBeGreaterThanOrEqual(0.8)
   })
 
   it('does not treat a booking ID as a phone number', () => {

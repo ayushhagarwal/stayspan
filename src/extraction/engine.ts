@@ -7,6 +7,10 @@ const MIN_CONFIDENCE = 0.55
 const ESSENTIAL_FIELDS: Array<keyof StayDraft> = ['propertyName', 'checkIn', 'checkOut', 'cancellationDeadline', 'address', 'phone']
 const GENERIC_HEADINGS = /^(booking|booking details|manage booking|your booking|confirmed|confirmation|hotels?|accommodation|reservation|trip|my bookings?)$/i
 const GENERIC_CONFIRMATION_HEADING = /\b(?:booking|reservation)\b.*\b(?:confirmed|confirmation|details)\b|\b(?:confirmed|confirmation)\b.*\b(?:booking|reservation)\b/i
+const GENERIC_PROPERTY_NAME = /^(?:hotels?(?:\s*&\s*homes)?|homes?|properties|accommodations?|my trips?|all bookings|room information|guest information|booking details|manage (?:your )?booking|view (?:the )?property|back to bookings)$/i
+const PROPERTY_ACTION = /\b(?:book|reserve|manage|change|cancel(?:lation)?|free|refund|deadline|contact|email|call|directions?|polic(?:y|ies)|options?|details|information|check[- ]?in|check[- ]?out)\b/i
+const LODGING_LINK = /(?:^|[/_-])(?:hotel|hostel|lodging|property|accommodation|resort|inn|guesthouse|homestay)(?:[/_-]|$)/i
+const LODGING_NAME = /\b(?:hotel|hostel|lodge|lodging|resort|inn|guesthouse|homestay|house|suites?|apartments?|rooms?)\b/i
 const DATE_BOUNDARY = /\b(check[- ]?in|arrival|check[- ]?out|departure|cancell?ation|address|phone|contact|booking (?:id|number)|reservation)\b/i
 const LABELS = {
   checkIn: ['check-in', 'check in', 'arrival', 'arrival date'],
@@ -50,6 +54,22 @@ function nearbyElements(snapshot: PageSnapshot, label: ElementSnapshot, limit = 
     const nearbyLayout = verticalDistance < 180 && element.rect.x >= label.rect.x - 30
     return (orderDistance > 0 && orderDistance <= limit) || sameContext || nearbyLayout
   })
+}
+
+function looksLikePropertyName(value: string) {
+  const words = value.split(/\s+/)
+  return value.length >= 3 && value.length <= 120 && words.length <= 14
+    && !GENERIC_HEADINGS.test(value) && !GENERIC_CONFIRMATION_HEADING.test(value)
+    && !GENERIC_PROPERTY_NAME.test(value) && !PROPERTY_ACTION.test(value)
+    && /[A-Za-z]{2}/.test(value) && !/[.!?]$/.test(value)
+}
+
+function hasNearbyBookingDetails(snapshot: PageSnapshot, element: ElementSnapshot) {
+  const nearby = nearbyElements(snapshot, element, 14)
+  const text = normalize(`${element.context} ${nearby.map((candidate) => candidate.text).join(' ')}`)
+  const signals = [LABELS.checkIn, LABELS.checkOut, LABELS.address]
+    .filter((labels) => labels.some((label) => text.toLowerCase().includes(label))).length
+  return signals
 }
 
 function segmentAfterLabel(context: string, labels: string[]) {
@@ -106,15 +126,24 @@ function extractPropertyName(snapshot: PageSnapshot, lodging: Record<string, unk
   }
   for (const element of snapshot.elements) {
     const value = normalize(element.text)
-    if (!element.headingLevel || value.length < 3 || value.length > 120 || GENERIC_HEADINGS.test(value) || GENERIC_CONFIRMATION_HEADING.test(value)) continue
+    if (!looksLikePropertyName(value)) continue
     const context = element.context.toLowerCase()
     const bookingContext = /check[- ]?in|check[- ]?out|address|room|guest|stay/.test(context)
-    const levelBoost = element.headingLevel === 1 ? 0.05 : 0
-    if (!bookingContext && !pageHasBookingLanguage) continue
-    candidates.push({
+    const nearbySignals = hasNearbyBookingDetails(snapshot, element)
+    if (element.headingLevel) {
+      const levelBoost = element.headingLevel === 1 ? 0.05 : 0
+      if (bookingContext || pageHasBookingLanguage) candidates.push({
+        value,
+        confidence: (bookingContext ? 0.82 : nearbySignals >= 2 ? 0.76 : 0.58) + levelBoost,
+        evidence: { source: 'heading-context', reason: bookingContext || nearbySignals >= 2 ? 'Heading grouped with booking details' : 'Prominent page heading' },
+      })
+    }
+    const isPropertyLink = element.tag === 'a' && (LODGING_LINK.test(element.href) || (nearbySignals >= 2 && LODGING_NAME.test(value)))
+    const semanticName = /^(?:name|legalname)$/i.test(element.itemProp) || /(?:property|hotel|hostel|accommodation) name/i.test(element.ariaLabel)
+    if (isPropertyLink || semanticName) candidates.push({
       value,
-      confidence: (bookingContext ? 0.82 : 0.58) + levelBoost,
-      evidence: { source: 'heading-context', reason: bookingContext ? 'Heading grouped with booking details' : 'Prominent page heading' },
+      confidence: semanticName ? 0.93 : nearbySignals >= 2 ? 0.9 : 0.76,
+      evidence: { source: isPropertyLink ? 'link' : 'semantic-label', reason: nearbySignals >= 2 ? 'Property link next to booking details' : 'Semantic lodging name' },
     })
   }
   const titlePart = normalize(snapshot.title.split(/[|–-]/)[0])
@@ -214,11 +243,27 @@ function extractCancellationPolicy(snapshot: PageSnapshot): Candidate | undefine
   return best(candidates)
 }
 
-function extractCancellationDeadline(policy?: Candidate): Candidate | undefined {
-  if (!policy) return undefined
-  const parsed = parseDateValue(policy.value, 23)
-  if (!parsed) return undefined
-  return { value: parsed.value, confidence: parsed.hasTime ? 0.84 : 0.7, evidence: { source: 'semantic-label', reason: 'Date parsed from cancellation policy' } }
+function extractCancellationDeadline(snapshot: PageSnapshot, policy?: Candidate): Candidate | undefined {
+  const candidates: Candidate[] = []
+  if (policy) {
+    const parsed = parseDateValue(policy.value, 23)
+    if (parsed) candidates.push({ value: parsed.value, confidence: parsed.hasTime ? 0.84 : 0.7, evidence: { source: 'semantic-label', reason: 'Date parsed from cancellation policy' } })
+  }
+  for (const element of snapshot.elements) {
+    const ownText = normalize(element.text)
+    const context = normalize(element.context || ownText)
+    const text = /(?:refund schedule|cancell?ation)/i.test(ownText) ? context : ownText
+    if (!/\b(?:cancel|cancell?ation|refund)\b/i.test(text) || !/\b(?:before|until|by)\b/i.test(text)) continue
+    const parsed = parseDateValue(text, 23)
+    if (!parsed) continue
+    const explicitSchedule = /refund schedule|full refund/i.test(text)
+    candidates.push({
+      value: parsed.value,
+      confidence: (parsed.hasTime ? 0.88 : 0.76) + (explicitSchedule ? 0.06 : 0),
+      evidence: { source: 'semantic-label', reason: explicitSchedule ? 'Deadline parsed from refund schedule' : 'Explicit dated cancellation deadline' },
+    })
+  }
+  return best(candidates)
 }
 
 function emptyDraft(snapshot: PageSnapshot): StayDraft {
@@ -232,7 +277,7 @@ export function extractStay(snapshot: PageSnapshot): ExtractionResult {
     propertyName: extractPropertyName(snapshot, lodging),
     checkIn: extractDate(snapshot, LABELS.checkIn, 15, 'Date and time near a check-in label'),
     checkOut: extractDate(snapshot, LABELS.checkOut, 11, 'Date and time near a check-out label'),
-    cancellationDeadline: extractCancellationDeadline(policyCandidate),
+    cancellationDeadline: extractCancellationDeadline(snapshot, policyCandidate),
     cancellationPolicy: policyCandidate,
     address: extractAddress(snapshot, lodging),
     phone: extractPhone(snapshot, lodging),
